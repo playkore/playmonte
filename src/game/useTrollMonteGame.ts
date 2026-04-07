@@ -1,24 +1,35 @@
 import { useEffect, useState } from 'react';
 
-import type { CardIndex, DialogAction, DialogButton, GameState, Stakes, TrollScript } from './types';
+import {
+  appendRecentScript,
+  buildIdleMessage,
+  buildRevealMessage,
+  deriveDealerMood,
+  pickScene,
+  randomCardIndex,
+} from './dialogue';
+import type { CardIndex, DialogAction, DialogButton, GameState, GameStats, Stakes, TrollScript } from './types';
 
-const CARD_INDICES: CardIndex[] = [0, 1, 2];
 const BASE_STAKES: Stakes = { win: 2, lose: 1 };
 const STARTING_COINS = 10;
 const IDLE_MESSAGE =
   'Добро пожаловать в Тролль-Монте. Найди выигрышную карту. Спойлер: ты не сможешь.';
 
-function randomCardIndex(excluded: CardIndex[] = []): CardIndex {
-  const available = CARD_INDICES.filter((index) => !excluded.includes(index));
-  return available[Math.floor(Math.random() * available.length)] ?? 0;
-}
-
-function randomFrom<T>(items: readonly T[]): T {
-  return items[Math.floor(Math.random() * items.length)];
-}
-
 function createDialogButton(id: string, label: string, action: DialogAction): DialogButton {
   return { id, label, action };
+}
+
+function createInitialStats(): GameStats {
+  return {
+    round: 0,
+    wins: 0,
+    losses: 0,
+    streak: 0,
+    lastPickedCard: null,
+    repeatedPickStreak: 0,
+    pickCounts: { 0: 0, 1: 0, 2: 0 },
+    recentScripts: [],
+  };
 }
 
 export function useTrollMonteGame() {
@@ -31,6 +42,9 @@ export function useTrollMonteGame() {
   const [revealedCards, setRevealedCards] = useState<boolean[]>([false, false, false]);
   const [dialogButtons, setDialogButtons] = useState<DialogButton[]>([]);
   const [activeScript, setActiveScript] = useState<TrollScript | null>(null);
+  const [stats, setStats] = useState<GameStats>(createInitialStats);
+
+  const dealerMood = deriveDealerMood(coins, stats.streak);
 
   useEffect(() => {
     if (gameState !== 'idle') {
@@ -38,29 +52,11 @@ export function useTrollMonteGame() {
     }
 
     const interval = window.setInterval(() => {
-      const messages = [
-        'Выбирай карту. Любую. Я обещаю, что не буду мухлевать. Почти.',
-        'Средняя выглядит сочно. Или это ловушка?',
-        'Я бы не советовал брать левую.',
-        'Ты будешь выбирать или так и будешь пялиться?',
-        'По статистике, ты сейчас проиграешь.',
-        'Я положил выигрышную карту справа. Или нет?',
-        'Моя бабушка играет быстрее тебя.',
-        'Я чую твой страх.',
-        'Интересный факт: в 66% случаев ты проигрываешь.',
-        'Не говорю, что вторая карта плохая, но она ужасная.',
-      ];
-
-      if (coins < 0) {
-        messages.push('Ты мне должен денег. Выбирай осторожно.');
-        messages.push('Играем в кредит, да?');
-      }
-
-      setDealerMessage(randomFrom(messages));
+      setDealerMessage(buildIdleMessage(coins, dealerMood, stats.repeatedPickStreak));
     }, 5000);
 
     return () => window.clearInterval(interval);
-  }, [coins, gameState]);
+  }, [coins, dealerMood, gameState, stats.repeatedPickStreak]);
 
   useEffect(() => {
     if (activeScript !== 'timeout' || gameState !== 'troll' || selectedCard === null) {
@@ -76,30 +72,46 @@ export function useTrollMonteGame() {
       setRevealedCards([false, false, false]);
       setDialogButtons([]);
       setActiveScript(null);
+      setStats((current) => ({
+        ...current,
+        round: current.round + 1,
+        losses: current.losses + 1,
+        streak: current.streak > 0 ? -1 : current.streak - 1,
+      }));
     }, 3000);
 
     return () => window.clearTimeout(timeoutId);
   }, [activeScript, gameState, selectedCard]);
 
   const reveal = (finalIndex: CardIndex, stakes = currentStakes) => {
+    const didWin = finalIndex === winningCard;
+
     setSelectedCard(finalIndex);
     setGameState('reveal');
     setRevealedCards([true, true, true]);
     setCurrentStakes(stakes);
     setActiveScript(null);
+    setStats((current) => ({
+      ...current,
+      round: current.round + 1,
+      wins: current.wins + (didWin ? 1 : 0),
+      losses: current.losses + (didWin ? 0 : 1),
+      streak: didWin
+        ? current.streak >= 0
+          ? current.streak + 1
+          : 1
+        : current.streak <= 0
+          ? current.streak - 1
+          : -1,
+    }));
 
-    if (finalIndex === winningCard) {
+    if (didWin) {
       setCoins((value) => value + stakes.win);
-      setDealerMessage(
-        `Уф. Карта ${finalIndex + 1} оказалась верной. Вот твои ${stakes.win} монеток. Не привыкай к этому.`,
-      );
     } else {
       setCoins((value) => value - stakes.lose);
-      setDealerMessage(
-        `ХАХАХА! Карта ${finalIndex + 1} — проигрышная! Победителем была Карта ${winningCard + 1}. Спасибо за ${stakes.lose} монетку(и)!`,
-      );
     }
 
+    setDealerMessage(buildRevealMessage(finalIndex, winningCard, stakes));
     setDialogButtons([createDialogButton('play-again', 'Играть снова', { type: 'reset-game' })]);
   };
 
@@ -117,160 +129,43 @@ export function useTrollMonteGame() {
     setWinningCard(randomCardIndex());
     setSelectedCard(null);
     setGameState('idle');
-    setDealerMessage('Давай еще раз. Я готов забрать больше твоих монеток.');
+    setDealerMessage(buildIdleMessage(coins, dealerMood, stats.repeatedPickStreak));
     setCurrentStakes(BASE_STAKES);
     setRevealedCards([false, false, false]);
     setDialogButtons([]);
     setActiveScript(null);
   };
 
-  const runTrollScript = (script: TrollScript, index: CardIndex) => {
-    setActiveScript(script);
+  const runTrollScript = (index: CardIndex) => {
+    const nextStats = {
+      ...stats,
+      lastPickedCard: index,
+      repeatedPickStreak: stats.lastPickedCard === index ? stats.repeatedPickStreak + 1 : 1,
+      pickCounts: {
+        ...stats.pickCounts,
+        [index]: stats.pickCounts[index] + 1,
+      },
+    };
 
-    switch (script) {
-      case 'are_you_sure':
-        setDealerMessage(
-          `Карта ${index + 1}? Серьезно? Я был уверен, что ты выберешь другую. Ты абсолютно уверен?`,
-        );
-        setDialogButtons([
-          createDialogButton('confirm-selection', 'Да, уверен!', { type: 'reveal', index }),
-          createDialogButton('change-mind', 'Стой, дай поменять', { type: 'cancel-selection' }),
-        ]);
-        return;
+    const outcome = pickScene({
+      coins,
+      selectedCard: index,
+      winningCard,
+      stats: nextStats,
+      dealerMood,
+    });
 
-      case 'monty_hall': {
-        const revealedLoser = randomCardIndex([index, winningCard]);
-        const otherCard = CARD_INDICES.find(
-          (cardIndex) => cardIndex !== index && cardIndex !== revealedLoser,
-        ) as CardIndex;
+    setStats({
+      ...nextStats,
+      recentScripts: appendRecentScript(nextStats.recentScripts, outcome.script),
+    });
+    setActiveScript(outcome.script);
+    setDealerMessage(outcome.message);
+    setDialogButtons(outcome.buttons);
+    setRevealedCards(outcome.revealedCards ?? [false, false, false]);
 
-        setRevealedCards([0, 1, 2].map((cardIndex) => cardIndex === revealedLoser));
-        setDealerMessage(
-          `Интересно. Давай я тебе помогу. Карта ${revealedLoser + 1} — проигрышная. Хочешь поменять свой выбор на Карту ${otherCard + 1}?`,
-        );
-        setDialogButtons([
-          createDialogButton(`switch-${otherCard}`, `Поменять на Карту ${otherCard + 1}`, {
-            type: 'reveal',
-            index: otherCard,
-          }),
-          createDialogButton(`stay-${index}`, `Оставить Карту ${index + 1}`, {
-            type: 'reveal',
-            index,
-          }),
-        ]);
-        return;
-      }
-
-      case 'raise_stakes': {
-        const raisedStakes = { win: 4, lose: 2 };
-        setDealerMessage(
-          'Ты выглядишь уверенно. Слишком уверенно. Давай удвоим ставки? Выиграешь — получишь +4, проиграешь — отдашь -2. Идет?',
-        );
-        setDialogButtons([
-          createDialogButton('raise-stakes', 'Удваиваем!', {
-            type: 'reveal',
-            index,
-            stakes: raisedStakes,
-          }),
-          createDialogButton('base-stakes', 'Нет, обычные ставки', { type: 'reveal', index }),
-        ]);
-        return;
-      }
-
-      case 'fake_hint': {
-        const isHonest = Math.random() > 0.5;
-        const hintedCard = isHonest ? winningCard : randomCardIndex([winningCard]);
-        const hintTone = isHonest ? 'Ладно, сегодня я почти честен.' : 'Буду честен. Наверное.';
-
-        setDealerMessage(
-          `${hintTone} Выигрышная карта — это Карта ${hintedCard + 1}. Хочешь поменять свой выбор на нее?`,
-        );
-        setDialogButtons([
-          createDialogButton(`hint-switch-${hintedCard}`, `Поменять на Карту ${hintedCard + 1}`, {
-            type: 'reveal',
-            index: hintedCard,
-          }),
-          createDialogButton(`hint-stay-${index}`, `Оставить Карту ${index + 1}`, {
-            type: 'reveal',
-            index,
-          }),
-        ]);
-        return;
-      }
-
-      case 'insult':
-        setDealerMessage(
-          `Карта ${index + 1}. Классический выбор для тех, кто любит терять деньги. Последний шанс передумать.`,
-        );
-        setDialogButtons([
-          createDialogButton(`insult-stay-${index}`, `Я сказал Карта ${index + 1}`, {
-            type: 'reveal',
-            index,
-          }),
-          createDialogButton('insult-cancel', 'Дай подумать', { type: 'cancel-selection' }),
-        ]);
-        return;
-
-      case 'bribe':
-        setDealerMessage(
-          `Псс. Дай мне 1 монетку, и я скажу тебе, выигрышная ли Карта ${index + 1}, до того как ты ее откроешь.`,
-        );
-        setDialogButtons([
-          createDialogButton(`pay-bribe-${index}`, 'Заплатить 1 монетку', {
-            type: 'pay-bribe',
-            index,
-          }),
-          createDialogButton(`skip-bribe-${index}`, 'Никаких взяток, открывай', {
-            type: 'reveal',
-            index,
-          }),
-        ]);
-        return;
-
-      case 'all_in': {
-        const allInStakes = { win: coins * 2, lose: coins };
-        setDealerMessage(
-          `Чувствуешь удачу? Ставь ВСЕ свои ${coins} монеток. Выиграешь — получишь ${coins * 2}! Проиграешь — останешься ни с чем.`,
-        );
-        setDialogButtons([
-          createDialogButton('all-in', 'ВА-БАНК!', {
-            type: 'reveal',
-            index,
-            stakes: allInStakes,
-          }),
-          createDialogButton('all-in-skip', 'Слишком страшно, обычная ставка', {
-            type: 'reveal',
-            index,
-          }),
-        ]);
-        return;
-      }
-
-      case 'swap_cards': {
-        const nextWinningCard = randomCardIndex([winningCard]);
-        setWinningCard(nextWinningCard);
-        setDealerMessage(
-          `*Вжух* Я только что перемешал карты силой мысли. Ты все еще выбираешь Карту ${index + 1}?`,
-        );
-        setDialogButtons([
-          createDialogButton('swap-open', 'Я доверяю интуиции. Открывай.', {
-            type: 'reveal',
-            index,
-          }),
-          createDialogButton('swap-cancel', 'Дай выбрать снова', { type: 'cancel-selection' }),
-        ]);
-        return;
-      }
-
-      case 'timeout':
-        setDealerMessage(
-          'Быстро! У тебя есть 3 секунды, чтобы подтвердить выбор. Иначе я заберу 1 монетку за тормоза.',
-        );
-        setDialogButtons([
-          createDialogButton('timeout-confirm', 'ПОДТВЕРЖДАЮ!', { type: 'reveal', index }),
-          createDialogButton('timeout-cancel', 'ПОМЕНЯТЬ!', { type: 'cancel-selection' }),
-        ]);
-        return;
+    if (outcome.nextWinningCard !== undefined) {
+      setWinningCard(outcome.nextWinningCard);
     }
   };
 
@@ -283,26 +178,7 @@ export function useTrollMonteGame() {
     setGameState('troll');
     setRevealedCards([false, false, false]);
     setCurrentStakes(BASE_STAKES);
-
-    const availableScripts: TrollScript[] = [
-      'are_you_sure',
-      'monty_hall',
-      'raise_stakes',
-      'fake_hint',
-      'insult',
-      'swap_cards',
-      'timeout',
-    ];
-
-    if (coins >= 1) {
-      availableScripts.push('bribe');
-    }
-
-    if (coins > 0) {
-      availableScripts.push('all_in');
-    }
-
-    runTrollScript(randomFrom(availableScripts), index);
+    runTrollScript(index);
   };
 
   const handleDialogAction = (action: DialogAction) => {
@@ -338,6 +214,7 @@ export function useTrollMonteGame() {
         setDialogButtons([
           createDialogButton('bribe-reset', 'Выбрать другую', { type: 'cancel-selection' }),
         ]);
+        return;
     }
   };
 

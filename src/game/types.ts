@@ -18,6 +18,8 @@ export type Stakes = {
   lose: number;
 };
 
+export type DealerMood = 'smug' | 'predatory' | 'chaotic';
+
 export type DialogAction =
   | { type: 'reveal'; index: CardIndex; stakes?: Stakes }
   | { type: 'cancel-selection' }
@@ -28,4 +30,32 @@ export type DialogButton = {
   id: string;
   label: string;
   action: DialogAction;
+};
+
+export type GameStats = {
+  round: number;
+  wins: number;
+  losses: number;
+  streak: number;
+  lastPickedCard: CardIndex | null;
+  repeatedPickStreak: number;
+  pickCounts: Record<CardIndex, number>;
+  recentScripts: TrollScript[];
+};
+
+export type SceneContext = {
+  coins: number;
+  selectedCard: CardIndex;
+  winningCard: CardIndex;
+  stats: GameStats;
+  dealerMood: DealerMood;
+};
+
+export type SceneOutcome = {
+  script: TrollScript;
+  message: string;
+  buttons: DialogButton[];
+  revealedCards?: boolean[];
+  nextWinningCard?: CardIndex;
+  timeoutMs?: number;
 };
