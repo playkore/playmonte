@@ -157,6 +157,23 @@ test('bribe resolution respects bribeWon instead of randomly falling through', (
   assert.equal(state.currentNodeId, 'bribe_truth');
 });
 
+test('fake hint does not render duplicate switch/stay actions for the same card', () => {
+  const machine = createInitialMachineState({ random: sequenceRandom([0.1]) });
+  machine.context.selectedCard = 2;
+  machine.context.winningCard = 2;
+
+  const state = enterNodeById(
+    { ...machine, currentNodeId: 'idle_prompt', pendingAutoTransition: null, dealerMessage: '' },
+    'scene_fake_hint',
+    { random: sequenceRandom([0.9]) },
+  );
+  const view = getViewModel(state);
+
+  assert.equal(view.dialogButtons.length, 1);
+  assert.equal(view.dialogButtons[0].action.actionId, 'hint-stay');
+  assert.match(view.dealerMessage, /и так держишься за Карту 3/i);
+});
+
 test('reveal loss message uses reveal snapshot, not mutable live winner state', () => {
   const machine = createInitialMachineState({ random: sequenceRandom([0.1]) });
   machine.context.selectedCard = 0;

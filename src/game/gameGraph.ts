@@ -309,9 +309,24 @@ export const gameGraph: GameGraph = {
         { type: 'set-scene-data', key: 'hintedCard', value: { helper: 'fakeHintedCard' } },
         { type: 'set-scene-data', key: 'hintTone', value: { helper: 'fakeHintTone' } },
       ],
-      messages: messages(
-        '{hintTone} Выигрышная карта, кажется, Карта {hintedCard}. Хочешь поменять выбор?',
-      ),
+      messages: [
+        {
+          guards: [
+            { op: 'ne', left: { from: 'scene', key: 'hintedCard' }, right: { helper: 'selectedCard' } },
+          ],
+          templates: [
+            '{hintTone} Выигрышная карта, кажется, Карта {hintedCard}. Хочешь поменять выбор?',
+          ],
+        },
+        {
+          guards: [
+            { op: 'eq', left: { from: 'scene', key: 'hintedCard' }, right: { helper: 'selectedCard' } },
+          ],
+          templates: [
+            '{hintTone} Похоже, ты и так держишься за Карту {hintedCard}. Можем просто открыть её, если хватит смелости.',
+          ],
+        },
+      ],
       transitions: [
         {
           id: 'hint-switch',
@@ -319,6 +334,9 @@ export const gameGraph: GameGraph = {
           actionId: 'hint-switch',
           label: 'Поменять на Карту {hintedCard}',
           target: 'reveal_resolution',
+          guards: [
+            { op: 'ne', left: { from: 'scene', key: 'hintedCard' }, right: { helper: 'selectedCard' } },
+          ],
           effects: [{ type: 'set-scene-data', key: 'revealIndex', value: { from: 'scene', key: 'hintedCard' } }],
         },
         {
