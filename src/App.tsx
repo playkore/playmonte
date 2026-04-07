@@ -1,3 +1,4 @@
+import { BalanceDisplay } from './components/BalanceDisplay';
 import { Card } from './components/Card';
 import { DealerDialog } from './components/DealerDialog';
 import { useTrollMonteGame } from './game/useTrollMonteGame';
@@ -22,14 +23,7 @@ export default function App() {
           <span className="text-purple-500">ТРОЛЛЬ</span>МОНТЕ
         </div>
 
-        <div className="flex items-center gap-3 bg-zinc-900/80 px-6 py-3 rounded-full border border-zinc-800 shadow-xl">
-          <span className="text-amber-400 text-xl" aria-hidden="true">
-            $
-          </span>
-          <span className={`font-bold text-xl ${coins < 0 ? 'text-red-500' : 'text-amber-400'}`}>
-            {coins}
-          </span>
-        </div>
+        <BalanceDisplay coins={coins} />
       </div>
 
       <main className="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-5xl mx-auto">

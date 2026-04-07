@@ -14,6 +14,8 @@ const BASE_STAKES: Stakes = { win: 2, lose: 1 };
 const STARTING_COINS = 10;
 const IDLE_MESSAGE =
   'Добро пожаловать в Тролль-Монте. Найди выигрышную карту. Спойлер: ты не сможешь.';
+const GAME_OVER_MESSAGE =
+  'Ну всё, касса пуста. Ты официально проиграл даже самому простому лохотрону, так что шоу окончено. Возвращайся, когда найдёшь хоть одну монетку и немного достоинства.';
 
 function createDialogButton(id: string, label: string, action: DialogAction): DialogButton {
   return { id, label, action };
@@ -57,6 +59,20 @@ export function useTrollMonteGame() {
 
     return () => window.clearInterval(interval);
   }, [coins, dealerMood, gameState, stats.repeatedPickStreak]);
+
+  useEffect(() => {
+    if (coins > 0 || gameState === 'game-over') {
+      return;
+    }
+
+    setSelectedCard(null);
+    setGameState('game-over');
+    setDealerMessage(GAME_OVER_MESSAGE);
+    setCurrentStakes(BASE_STAKES);
+    setRevealedCards([false, false, false]);
+    setDialogButtons([]);
+    setActiveScript(null);
+  }, [coins, gameState]);
 
   useEffect(() => {
     if (activeScript !== 'timeout' || gameState !== 'troll' || selectedCard === null) {
@@ -126,6 +142,14 @@ export function useTrollMonteGame() {
   };
 
   const resetGame = () => {
+    if (coins <= 0) {
+      setGameState('game-over');
+      setDealerMessage(GAME_OVER_MESSAGE);
+      setDialogButtons([]);
+      setActiveScript(null);
+      return;
+    }
+
     setWinningCard(randomCardIndex());
     setSelectedCard(null);
     setGameState('idle');

@@ -1,6 +1,6 @@
 export type CardIndex = 0 | 1 | 2;
 
-export type GameState = 'idle' | 'troll' | 'reveal';
+export type GameState = 'idle' | 'troll' | 'reveal' | 'game-over';
 
 export type TrollScript =
   | 'are_you_sure'
