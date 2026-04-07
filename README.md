@@ -8,4 +8,7 @@
 
 1. Установить зависимости: `npm install`
 2. Запустить dev-сервер: `npm run dev`
-3. Собрать production-версию: `npm run build`
+3. Вставить OpenAI API key в поле на странице
+4. Собрать production-версию: `npm run build`
+
+Игра ходит в OpenAI Responses API напрямую с фронтенда через `fetch`. Ключ хранится в `localStorage` только для прототипа.

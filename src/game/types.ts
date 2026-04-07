@@ -29,3 +29,8 @@ export type DialogButton = {
   label: string;
   action: DialogAction;
 };
+
+export type GameConfig = {
+  apiKey: string;
+  model: string;
+};

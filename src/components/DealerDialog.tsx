@@ -7,9 +7,10 @@ type DealerDialogProps = {
   message: string;
   buttons: DialogButton[];
   onAction: (action: DialogAction) => void;
+  isLoading: boolean;
 };
 
-export function DealerDialog({ message, buttons, onAction }: DealerDialogProps) {
+export function DealerDialog({ message, buttons, onAction, isLoading }: DealerDialogProps) {
   return (
     <div className="w-full max-w-2xl mx-auto mt-4 sm:mt-8 p-6 bg-zinc-900/80 backdrop-blur-md rounded-2xl border border-zinc-800 shadow-2xl">
       <div className="flex items-start gap-4">
@@ -35,6 +36,10 @@ export function DealerDialog({ message, buttons, onAction }: DealerDialogProps) 
             </AnimatePresence>
           </div>
 
+          {isLoading && (
+            <div className="mt-3 text-sm text-zinc-400">Дилер думает, как бы тебя унизить…</div>
+          )}
+
           <AnimatePresence>
             {buttons.length > 0 && (
               <motion.div
@@ -46,6 +51,7 @@ export function DealerDialog({ message, buttons, onAction }: DealerDialogProps) 
                   <button
                     key={button.id}
                     onClick={() => onAction(button.action)}
+                    disabled={isLoading}
                     className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 rounded-lg font-medium transition-colors border border-zinc-700 hover:border-zinc-500 active:scale-95"
                   >
                     {button.label}
