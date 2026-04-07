@@ -127,6 +127,57 @@ test('timeout scene auto-transition applies penalty and returns to idle', () => 
   assert.equal(next.context.selectedCard, null);
 });
 
+test('winning reveal always lands in reveal_win, not a random fallback', () => {
+  const machine = createInitialMachineState({ random: sequenceRandom([0.1]) });
+  machine.context.selectedCard = 2;
+  machine.context.winningCard = 2;
+  machine.context.currentStakes = { win: 2, lose: 1 };
+  machine.context.sceneData = { revealIndex: 2 };
+
+  const state = enterNodeById(
+    { ...machine, currentNodeId: 'reveal_resolution', pendingAutoTransition: null, dealerMessage: '' },
+    'reveal_resolution',
+    { random: sequenceRandom([0.95]) },
+  );
+
+  assert.equal(state.currentNodeId, 'reveal_win');
+});
+
+test('bribe resolution respects bribeWon instead of randomly falling through', () => {
+  const machine = createInitialMachineState({ random: sequenceRandom([0.1]) });
+  machine.context.coins = 5;
+  machine.context.sceneData = { bribeWon: true };
+
+  const state = enterNodeById(
+    { ...machine, currentNodeId: 'scene_bribe', pendingAutoTransition: null, dealerMessage: '' },
+    'bribe_resolution',
+    { random: sequenceRandom([0.95]) },
+  );
+
+  assert.equal(state.currentNodeId, 'bribe_truth');
+});
+
+test('reveal loss message uses reveal snapshot, not mutable live winner state', () => {
+  const machine = createInitialMachineState({ random: sequenceRandom([0.1]) });
+  machine.context.selectedCard = 0;
+  machine.context.winningCard = 0;
+  machine.context.currentStakes = { win: 4, lose: 2 };
+  machine.context.sceneData = {
+    revealIndex: 0,
+    resolvedWinningCard: 1,
+    revealOutcome: 'lose',
+  };
+
+  const state = enterNodeById(
+    { ...machine, currentNodeId: 'reveal_resolution', pendingAutoTransition: null, dealerMessage: '' },
+    'reveal_loss',
+    { random: sequenceRandom([0.1]) },
+  );
+  const view = getViewModel(state);
+
+  assert.match(view.dealerMessage, /Карта 1 проигрышная\..*Карта 2\./);
+});
+
 test('game over blocks further progress', () => {
   const machine = createInitialMachineState({ random: sequenceRandom([0.1]) });
   machine.currentNodeId = 'game_over';

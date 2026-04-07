@@ -158,6 +158,8 @@ function resolveHelper(
         ? 'Ладно, сегодня я почти честен.'
         : 'Буду честен. Наверное.';
     }
+    case 'winningCard':
+      return context.winningCard;
     case 'selectedCard':
       return context.selectedCard;
     case 'selectedCardOrRevealIndex':
@@ -401,6 +403,14 @@ function buildTemplateVars(context: MachineContext) {
       typeof context.sceneData.revealedLoser === 'number'
         ? Number(context.sceneData.revealedLoser) + 1
         : '',
+    revealIndex:
+      typeof context.sceneData.revealIndex === 'number'
+        ? Number(context.sceneData.revealIndex) + 1
+        : '',
+    resolvedWinningCard:
+      typeof context.sceneData.resolvedWinningCard === 'number'
+        ? Number(context.sceneData.resolvedWinningCard) + 1
+        : '',
     otherCard:
       typeof context.sceneData.otherCard === 'number' ? Number(context.sceneData.otherCard) + 1 : '',
     hintedCard:
@@ -414,7 +424,7 @@ function buildTemplateVars(context: MachineContext) {
       Object.entries(context.sceneData).map(([key, value]) => {
         if (
           typeof value === 'number' &&
-          ['revealedLoser', 'otherCard', 'hintedCard', 'revealIndex'].includes(key)
+          ['revealedLoser', 'otherCard', 'hintedCard', 'revealIndex', 'resolvedWinningCard'].includes(key)
         ) {
           return [key, value + 1];
         }

@@ -74,6 +74,7 @@ export type GameHelperName =
   | 'nonCurrentWinningCard'
   | 'fakeHintedCard'
   | 'fakeHintTone'
+  | 'winningCard'
   | 'selectedCard'
   | 'selectedCardOrRevealIndex'
   | 'revealOutcome'

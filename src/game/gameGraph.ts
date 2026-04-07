@@ -437,6 +437,7 @@ export const gameGraph: GameGraph = {
           id: 'timeout-back-to-idle',
           trigger: 'auto',
           target: 'idle_timeout_penalty',
+          guards: [{ op: 'gt', left: { from: 'context', key: 'coins' }, right: 0 }],
         },
       ],
     }),
@@ -483,12 +484,19 @@ export const gameGraph: GameGraph = {
           id: 'bribe-success',
           trigger: 'auto',
           target: 'bribe_truth',
-          guards: [{ op: 'eq', left: { from: 'scene', key: 'bribeWon' }, right: true }],
+          guards: [
+            { op: 'gt', left: { from: 'context', key: 'coins' }, right: 0 },
+            { op: 'eq', left: { from: 'scene', key: 'bribeWon' }, right: true },
+          ],
         },
         {
           id: 'bribe-failure',
           trigger: 'auto',
           target: 'bribe_lie',
+          guards: [
+            { op: 'gt', left: { from: 'context', key: 'coins' }, right: 0 },
+            { op: 'eq', left: { from: 'scene', key: 'bribeWon' }, right: false },
+          ],
         },
       ],
     }),
@@ -527,7 +535,7 @@ export const gameGraph: GameGraph = {
       phase: 'troll',
       scriptId: 'all_in',
       messages: messages(
-        'Чувствуешь удачу? Ставь все свои {coins} монеток. Выиграешь {winAmount}, проиграешь все.',
+        'Чувствуешь удачу? Ставь все свои {coins} монеток. Выиграешь {allInWinAmount}, проиграешь все.',
       ),
       transitions: [
         {
@@ -560,6 +568,7 @@ export const gameGraph: GameGraph = {
       entryEffects: [
         { type: 'set-context', key: 'selectedCard', value: { helper: 'selectedCardOrRevealIndex' } },
         { type: 'set-revealed-cards', mode: 'all-revealed' },
+        { type: 'set-scene-data', key: 'resolvedWinningCard', value: { helper: 'winningCard' } },
         { type: 'set-scene-data', key: 'revealOutcome', value: { helper: 'revealOutcome' } },
         { type: 'add-coins', amount: { helper: 'revealCoinDelta' } },
         { type: 'update-round-stats', outcome: { helper: 'revealOutcome' } },
@@ -575,12 +584,19 @@ export const gameGraph: GameGraph = {
           id: 'reveal-win',
           trigger: 'auto',
           target: 'reveal_win',
-          guards: [{ op: 'eq', left: { from: 'scene', key: 'revealOutcome' }, right: 'win' }],
+          guards: [
+            { op: 'gt', left: { from: 'context', key: 'coins' }, right: 0 },
+            { op: 'eq', left: { from: 'scene', key: 'revealOutcome' }, right: 'win' },
+          ],
         },
         {
           id: 'reveal-loss',
           trigger: 'auto',
           target: 'reveal_loss',
+          guards: [
+            { op: 'gt', left: { from: 'context', key: 'coins' }, right: 0 },
+            { op: 'eq', left: { from: 'scene', key: 'revealOutcome' }, right: 'lose' },
+          ],
         },
       ],
     }),
@@ -588,8 +604,8 @@ export const gameGraph: GameGraph = {
       id: 'reveal_win',
       phase: 'reveal',
       messages: messages(
-        'Уф. Карта {selectedCard} оказалась верной. Вот твои {winAmount} монеток. Не привыкай к этому.',
-        'Нелепо, но да, Карта {selectedCard} выиграла. Забирай свои {winAmount} монеток.',
+        'Уф. Карта {revealIndex} оказалась верной. Вот твои {winAmount} монеток. Не привыкай к этому.',
+        'Нелепо, но да, Карта {revealIndex} выиграла. Забирай свои {winAmount} монеток.',
       ),
       transitions: [
         {
@@ -606,8 +622,8 @@ export const gameGraph: GameGraph = {
       id: 'reveal_loss',
       phase: 'reveal',
       messages: messages(
-        'ХАХАХА. Карта {selectedCard} проигрышная. Победителем была Карта {winningCard}. Спасибо за {loseAmount} монетку(и).',
-        'Мимо. Карта {selectedCard} была пустышкой, а выигрывала Карта {winningCard}. Я забираю {loseAmount}.',
+        'ХАХАХА. Карта {revealIndex} проигрышная. Победителем была Карта {resolvedWinningCard}. Спасибо за {loseAmount} монетку(и).',
+        'Мимо. Карта {revealIndex} была пустышкой, а выигрывала Карта {resolvedWinningCard}. Я забираю {loseAmount}.',
       ),
       transitions: [
         {
