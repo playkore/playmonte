@@ -170,7 +170,12 @@ function resolveHelper(
     }
     case 'revealCoinDelta': {
       const outcome = resolveHelper(context, 'revealOutcome', random);
-      return outcome === 'win' ? context.currentStakes.win : -context.currentStakes.lose;
+      const isLastWin = context.stats.streak > 0;
+      if (outcome === 'win') {
+        const winAmount = context.currentStakes.win;
+        return isLastWin ? winAmount * 2 : winAmount;
+      }
+      return -1;
     }
     case 'bribeIsWinningCard':
       return context.selectedCard === context.winningCard;
