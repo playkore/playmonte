@@ -86,10 +86,6 @@ function getNextRoundStakes(context: MachineContext): Stakes {
   return BASE_STAKES_VALUE;
 }
 
-function logWinningCard(winningCard: CardIndex) {
-  console.log('Winning card:', winningCard + 1);
-}
-
 function resolveValue(
   context: MachineContext,
   value: ValueSource,
@@ -290,9 +286,6 @@ function applyEffect(
       const nextContext = structuredClone(context) as MachineContext;
       const resolvedValue = resolveValue(context, effect.value, random, event);
       setPathValue(nextContext as unknown as Record<string, unknown>, effect.key, resolvedValue);
-      if (effect.key === 'winningCard' && typeof resolvedValue === 'number') {
-        logWinningCard(resolvedValue as CardIndex);
-      }
       return nextContext;
     }
     case 'set-scene-data':
@@ -397,7 +390,6 @@ function applyEffect(
       };
     case 'prepare-next-round':
       const nextWinningCard = randomCardIndex([], random);
-      logWinningCard(nextWinningCard);
       return {
         ...context,
         winningCard: nextWinningCard,
@@ -465,6 +457,17 @@ function chooseMessage(node: GameStateNode, context: MachineContext, graph: Game
   const groups = (node.messages ?? []).filter((group) =>
     (group.guards ?? []).every((guard) => evaluateGuard(guard, context, graph, random)),
   );
+
+  if (node.messageMode === 'prefix-random') {
+    const [prefixGroup, ...remainingGroups] = groups;
+    const prefix = prefixGroup ? renderTemplate(randomFrom(prefixGroup.templates, random), context) : '';
+    const remainingTemplates = remainingGroups.flatMap((group) => group.templates);
+    const remaining =
+      remainingTemplates.length > 0 ? renderTemplate(randomFrom(remainingTemplates, random), context) : '';
+
+    return [prefix, remaining].filter(Boolean).join('\n\n');
+  }
+
   const templates = groups.flatMap((group) => group.templates);
 
   if (templates.length === 0) {
@@ -583,7 +586,6 @@ export function createInitialMachineState(
 ): MachineState {
   const random = options.random ?? Math.random;
   const initialWinningCard = randomCardIndex([], random);
-  logWinningCard(initialWinningCard);
   const initialContext: MachineContext = {
     coins: 10,
     winningCard: initialWinningCard,

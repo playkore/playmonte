@@ -27,6 +27,30 @@ test('initial machine exposes intro message and idle state', () => {
   assert.match(view.dealerMessage, /Добро пожаловать/i);
 });
 
+test('machine engine does not log speculative winning cards', () => {
+  const originalLog = console.log;
+  const logs: unknown[][] = [];
+  console.log = (...args: unknown[]) => {
+    logs.push(args);
+  };
+
+  try {
+    const machine = createInitialMachineState({ random: sequenceRandom([0.2]) });
+    machine.currentNodeId = 'reveal_win';
+    machine.context.stats.streak = 1;
+
+    dispatchMachineEvent(
+      machine,
+      { type: 'action', actionId: 'play-again' },
+      { random: sequenceRandom([0.7, 0.1]) },
+    );
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.deepEqual(logs, []);
+});
+
 test('play again after a win prepares the doubled next round stake', () => {
   const machine = createInitialMachineState({ random: sequenceRandom([0.2]) });
   machine.currentNodeId = 'reveal_win';
@@ -43,7 +67,8 @@ test('play again after a win prepares the doubled next round stake', () => {
   assert.equal(view.gameState, 'idle');
   assert.equal(view.currentStakes.win, 4);
   assert.equal(view.currentStakes.lose, 1);
-  assert.match(view.dealerMessage, /ставка удвоилась/i);
+  assert.match(view.dealerMessage, /^Неплохо\..*ставка удвоилась/i);
+  assert.match(view.dealerMessage, /\n\nВыбирай карту/i);
   assert.match(view.dealerMessage, /4 монет/i);
 });
 
@@ -62,7 +87,7 @@ test('play again after consecutive wins keeps doubling the next round stake', ()
 
   assert.equal(view.currentStakes.win, 8);
   assert.equal(view.currentStakes.lose, 1);
-  assert.match(view.dealerMessage, /получишь 8/i);
+  assert.match(view.dealerMessage, /8 монет/i);
 });
 
 test('play again after a loss resets the next round stake to 2', () => {
@@ -80,6 +105,24 @@ test('play again after a loss resets the next round stake to 2', () => {
 
   assert.equal(view.currentStakes.win, 2);
   assert.equal(view.currentStakes.lose, 1);
+});
+
+test('regular reveal loss subtracts one coin even when win reward is doubled', () => {
+  const machine = createInitialMachineState({ random: sequenceRandom([0.2]) });
+  machine.context.coins = 10;
+  machine.context.selectedCard = 0;
+  machine.context.winningCard = 1;
+  machine.context.currentStakes = { win: 8, lose: 1 };
+  machine.context.sceneData = { revealIndex: 0 };
+
+  const state = enterNodeById(
+    { ...machine, currentNodeId: 'reveal_resolution', pendingAutoTransition: null, dealerMessage: '' },
+    'reveal_resolution',
+    { random: sequenceRandom([0.1]) },
+  );
+
+  assert.equal(state.currentNodeId, 'reveal_loss');
+  assert.equal(state.context.coins, 9);
 });
 
 test('scene routing excludes bribe and all-in when coins are not positive', () => {

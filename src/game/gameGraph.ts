@@ -120,15 +120,17 @@ function cardSceneTransitions(): GameTransition[] {
   ];
 }
 
+function doubledStakeMessages(): GameMessageGroup {
+  return {
+    templates: [
+      'Неплохо. После прошлого выигрыша ставка удвоилась: теперь выиграешь {winAmount} монеток, а проиграешь {loseAmount}.',
+      'Раз уж ты поймал удачу, я поднял цену: за правильную карту получишь {winAmount}, за ошибку потеряешь {loseAmount}.',
+    ],
+  };
+}
+
 function idlePromptMessages(): GameMessageGroup[] {
   return [
-    {
-      guards: [{ op: 'gte', left: { from: 'context', key: 'stats.streak' }, right: 1 }],
-      templates: [
-        'Неплохо. После прошлого выигрыша ставка удвоилась: теперь выиграешь {winAmount} монеток, а проиграешь {loseAmount}.',
-        'Раз уж ты поймал удачу, я поднял цену: за правильную карту получишь {winAmount}, за ошибку потеряешь {loseAmount}.',
-      ],
-    },
     {
       templates: [
         'Выбирай карту. Любую. Я обещаю, что не буду мухлевать. Почти.',
@@ -194,6 +196,16 @@ export const gameGraph: GameGraph = {
       transitions: [
         ...cardSceneTransitions(),
         { id: 'refresh-idle', trigger: 'auto', target: 'idle_prompt', delayMs: 5000 },
+      ],
+    }),
+    idle_doubled_stakes: state({
+      id: 'idle_doubled_stakes',
+      phase: 'idle',
+      messageMode: 'prefix-random',
+      messages: [doubledStakeMessages(), ...idlePromptMessages()],
+      transitions: [
+        ...cardSceneTransitions(),
+        { id: 'doubled-stakes-to-idle', trigger: 'auto', target: 'idle_prompt', delayMs: 5000 },
       ],
     }),
     idle_cancel: state({
@@ -637,7 +649,7 @@ export const gameGraph: GameGraph = {
           trigger: 'action',
           actionId: 'play-again',
           label: 'Играть снова',
-          target: 'idle_prompt',
+          target: 'idle_doubled_stakes',
           effects: [{ type: 'prepare-next-round' }],
         },
       ],

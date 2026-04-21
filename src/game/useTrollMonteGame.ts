@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
    createInitialMachineState,
@@ -10,8 +10,18 @@ import type { CardIndex, DialogAction } from './types';
 
 export function useTrollMonteGame() {
   const [machineState, setMachineState] = useState(() => createInitialMachineState());
+  const loggedWinningCardRef = useRef<CardIndex | null>(null);
   const viewModel = getViewModel(machineState);
   const dealerMood = deriveDealerMood(viewModel.coins, machineState.context.stats.streak);
+
+  useEffect(() => {
+    if (loggedWinningCardRef.current === viewModel.winningCard) {
+      return;
+    }
+
+    loggedWinningCardRef.current = viewModel.winningCard;
+    console.log('Winning card:', viewModel.winningCard + 1);
+  }, [viewModel.winningCard]);
 
   useEffect(() => {
     if (!machineState.pendingAutoTransition) {

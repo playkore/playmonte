@@ -117,6 +117,7 @@ export type GameStateNode = {
   phase: GameState;
   scriptId?: GameScriptId;
   messages?: GameMessageGroup[];
+  messageMode?: 'single' | 'prefix-random';
   entryEffects?: GameEffect[];
   transitions: GameTransition[];
 };
