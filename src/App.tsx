@@ -3,15 +3,17 @@ import { Card } from './components/Card';
 import { DealerDialog } from './components/DealerDialog';
 import { useTrollMonteGame } from './game/useTrollMonteGame';
 
+
 export default function App() {
   const {
     coins,
     winningCard,
     selectedCard,
     revealedCards,
-    dealerMessage,
+     dealerMood,
     gameState,
     dialogButtons,
+    dealerMessage,
     selectCard,
     handleDialogAction,
   } = useTrollMonteGame();
@@ -41,11 +43,12 @@ export default function App() {
           ))}
         </div>
 
-        <DealerDialog
-          message={dealerMessage}
-          buttons={dialogButtons}
-          onAction={handleDialogAction}
-        />
+<DealerDialog
+           message={dealerMessage}
+           buttons={dialogButtons}
+           onAction={handleDialogAction}
+           mood={dealerMood}
+         />
       </main>
     </div>
   );

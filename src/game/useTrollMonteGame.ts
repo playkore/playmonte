@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 
 import {
-  createInitialMachineState,
-  dispatchMachineEvent,
-  getViewModel,
-} from './gameEngine';
+   createInitialMachineState,
+   dispatchMachineEvent,
+   getViewModel,
+   deriveDealerMood,
+ } from './gameEngine';
 import type { CardIndex, DialogAction } from './types';
 
 export function useTrollMonteGame() {
   const [machineState, setMachineState] = useState(() => createInitialMachineState());
   const viewModel = getViewModel(machineState);
+  const dealerMood = deriveDealerMood(viewModel.coins, machineState.context.stats.streak);
 
   useEffect(() => {
     if (!machineState.pendingAutoTransition) {
@@ -72,6 +74,6 @@ export function useTrollMonteGame() {
     selectCard,
     cancelSelection,
     handleDialogAction,
-    resetGame,
+    dealerMood,
   };
 }

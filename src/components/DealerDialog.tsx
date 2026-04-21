@@ -1,21 +1,33 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { Smile } from 'lucide-react';
+import { Smile, Skull, Angry } from 'lucide-react';
 
-import type { DialogAction, DialogButton } from '../game/types';
+import type { DialogAction, DialogButton, DealerMood } from '../game/types';
 
 type DealerDialogProps = {
   message: string;
   buttons: DialogButton[];
   onAction: (action: DialogAction) => void;
-};
+  mood: DealerMood;
+ };
 
-export function DealerDialog({ message, buttons, onAction }: DealerDialogProps) {
+
+export function DealerDialog({ message, buttons, onAction, mood }: DealerDialogProps) {
+  const moodIcon = (() => {
+    switch (mood) {
+      case 'smug':
+        return <Smile className="h-8 w-8 text-green-400" />;
+      case 'predatory':
+        return <Skull className="h-8 w-8 text-red-600" />;
+      case 'chaotic':
+        return <Angry className="h-8 w-8 text-yellow-300" />;
+      default:
+        return <Smile className="h-8 w-8 text-green-400" />;
+    }
+  })();
   return (
     <div className="w-full max-w-2xl mx-auto mt-4 sm:mt-8 p-6 bg-zinc-900/80 backdrop-blur-md rounded-2xl border border-zinc-800 shadow-2xl">
       <div className="flex items-start gap-4">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/20">
-          <Smile className="w-8 h-8 text-white" />
-        </div>
+<div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/20">{moodIcon}</div>
 
         <div className="flex-1">
           <h3 className="text-purple-400 font-bold text-sm mb-1 uppercase tracking-wider">Дилер</h3>
