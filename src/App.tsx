@@ -10,10 +10,11 @@ export default function App() {
     winningCard,
     selectedCard,
     revealedCards,
-     dealerMood,
+    dealerMood,
     gameState,
     dialogButtons,
     dealerMessage,
+    currentStakes,
     selectCard,
     handleDialogAction,
   } = useTrollMonteGame();
@@ -43,12 +44,29 @@ export default function App() {
           ))}
         </div>
 
-<DealerDialog
-           message={dealerMessage}
-           buttons={dialogButtons}
-           onAction={handleDialogAction}
-           mood={dealerMood}
-         />
+        <DealerDialog
+          message={dealerMessage}
+          buttons={dialogButtons}
+          onAction={handleDialogAction}
+          mood={dealerMood}
+        />
+
+        <div className="mt-5 flex justify-center">
+          <div className="inline-flex items-center gap-3 rounded-full border border-zinc-800 bg-zinc-900/70 px-4 py-2 shadow-lg shadow-black/20 backdrop-blur-md">
+            <span className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-400">
+              Stakes
+            </span>
+            <div className="h-5 w-px bg-zinc-700" />
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-sm font-bold text-emerald-300">
+                Win +{currentStakes.win}
+              </span>
+              <span className="rounded-full border border-rose-400/30 bg-rose-400/10 px-3 py-1 text-sm font-bold text-rose-300">
+                Lose -{currentStakes.lose}
+              </span>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   );

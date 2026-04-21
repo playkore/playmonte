@@ -75,6 +75,17 @@ function appendRecentScript(recentScripts: string[], script: string) {
   return [...recentScripts, script].slice(-MAX_RECENT_SCRIPTS);
 }
 
+function getNextRoundStakes(context: MachineContext): Stakes {
+  if (context.stats.streak > 0) {
+    return {
+      win: context.currentStakes.win * 2,
+      lose: 1,
+    };
+  }
+
+  return BASE_STAKES_VALUE;
+}
+
 function resolveValue(
   context: MachineContext,
   value: ValueSource,
@@ -170,10 +181,8 @@ function resolveHelper(
     }
     case 'revealCoinDelta': {
       const outcome = resolveHelper(context, 'revealOutcome', random);
-      const isLastWin = context.stats.streak > 0;
       if (outcome === 'win') {
-        const winAmount = context.currentStakes.win;
-        return isLastWin ? winAmount * 2 : winAmount;
+        return context.currentStakes.win;
       }
       return -1;
     }
@@ -375,16 +384,17 @@ function applyEffect(
       return {
         ...context,
         selectedCard: null,
-        currentStakes: BASE_STAKES_VALUE,
         revealedCards: [false, false, false],
         sceneData: {},
       };
     case 'prepare-next-round':
+      const nextWinningCard = randomCardIndex([], random);
+      console.log('Winning card:', nextWinningCard + 1);
       return {
         ...context,
-        winningCard: randomCardIndex([], random),
+        winningCard: nextWinningCard,
         selectedCard: null,
-        currentStakes: BASE_STAKES_VALUE,
+        currentStakes: getNextRoundStakes(context),
         revealedCards: [false, false, false],
         sceneData: {},
       };
@@ -396,9 +406,6 @@ function applyEffect(
 }
 
 function buildTemplateVars(context: MachineContext) {
-  const winAmount = context.currentStakes.win;
-  const loseAmount = context.currentStakes.lose;
-
   return {
     coins: context.coins,
     allInWinAmount: context.coins * 2,
@@ -423,8 +430,8 @@ function buildTemplateVars(context: MachineContext) {
         ? Number(context.sceneData.hintedCard) + 1
         : '',
     hintTone: context.sceneData.hintTone ?? '',
-    winAmount,
-    loseAmount,
+    winAmount: context.currentStakes.win,
+    loseAmount: context.currentStakes.lose,
     ...Object.fromEntries(
       Object.entries(context.sceneData).map(([key, value]) => {
         if (
@@ -567,9 +574,11 @@ export function createInitialMachineState(
   graph: GameGraph = gameGraph,
 ): MachineState {
   const random = options.random ?? Math.random;
+  const winningCard = randomCardIndex([], random);
+  console.log('Winning card:', winningCard + 1);
   const initialContext: MachineContext = {
     coins: 10,
-    winningCard: randomCardIndex([], random),
+    winningCard,
     selectedCard: null,
     revealedCards: [false, false, false],
     currentStakes: BASE_STAKES_VALUE,

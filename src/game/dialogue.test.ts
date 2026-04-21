@@ -27,6 +27,61 @@ test('initial machine exposes intro message and idle state', () => {
   assert.match(view.dealerMessage, /Добро пожаловать/i);
 });
 
+test('play again after a win prepares the doubled next round stake', () => {
+  const machine = createInitialMachineState({ random: sequenceRandom([0.2]) });
+  machine.currentNodeId = 'reveal_win';
+  machine.context.currentStakes = { win: 2, lose: 1 };
+  machine.context.stats.streak = 1;
+
+  const next = dispatchMachineEvent(
+    machine,
+    { type: 'action', actionId: 'play-again' },
+    { random: sequenceRandom([0.1]) },
+  );
+  const view = getViewModel(next);
+
+  assert.equal(view.gameState, 'idle');
+  assert.equal(view.currentStakes.win, 4);
+  assert.equal(view.currentStakes.lose, 1);
+  assert.match(view.dealerMessage, /ставка удвоилась/i);
+  assert.match(view.dealerMessage, /4 монет/i);
+});
+
+test('play again after consecutive wins keeps doubling the next round stake', () => {
+  const machine = createInitialMachineState({ random: sequenceRandom([0.2]) });
+  machine.currentNodeId = 'reveal_win';
+  machine.context.currentStakes = { win: 4, lose: 1 };
+  machine.context.stats.streak = 2;
+
+  const next = dispatchMachineEvent(
+    machine,
+    { type: 'action', actionId: 'play-again' },
+    { random: sequenceRandom([0.1]) },
+  );
+  const view = getViewModel(next);
+
+  assert.equal(view.currentStakes.win, 8);
+  assert.equal(view.currentStakes.lose, 1);
+  assert.match(view.dealerMessage, /получишь 8/i);
+});
+
+test('play again after a loss resets the next round stake to 2', () => {
+  const machine = createInitialMachineState({ random: sequenceRandom([0.2]) });
+  machine.currentNodeId = 'reveal_loss';
+  machine.context.currentStakes = { win: 8, lose: 1 };
+  machine.context.stats.streak = -1;
+
+  const next = dispatchMachineEvent(
+    machine,
+    { type: 'action', actionId: 'play-again' },
+    { random: sequenceRandom([0.1]) },
+  );
+  const view = getViewModel(next);
+
+  assert.equal(view.currentStakes.win, 2);
+  assert.equal(view.currentStakes.lose, 1);
+});
+
 test('scene routing excludes bribe and all-in when coins are not positive', () => {
   const machine = createInitialMachineState({ random: sequenceRandom([0.1]) });
   machine.currentNodeId = 'idle_prompt';
@@ -141,6 +196,7 @@ test('winning reveal always lands in reveal_win, not a random fallback', () => {
   );
 
   assert.equal(state.currentNodeId, 'reveal_win');
+  assert.match(getViewModel(state).dealerMessage, /2 монет/);
 });
 
 test('bribe resolution respects bribeWon instead of randomly falling through', () => {

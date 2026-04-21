@@ -21,7 +21,6 @@ function messages(...templates: string[]): GameMessageGroup[] {
 function cardSceneTransitions(): GameTransition[] {
   const sharedEffects = [
     { type: 'set-context', key: 'selectedCard', value: { helper: 'actionCardIndex' } },
-    { type: 'set-stakes', value: { helper: 'baseStakes' } },
     { type: 'set-revealed-cards', mode: 'all-hidden' },
     { type: 'clear-scene-data' },
     { type: 'update-selection-stats' },
@@ -123,6 +122,13 @@ function cardSceneTransitions(): GameTransition[] {
 
 function idlePromptMessages(): GameMessageGroup[] {
   return [
+    {
+      guards: [{ op: 'gte', left: { from: 'context', key: 'stats.streak' }, right: 1 }],
+      templates: [
+        'Неплохо. После прошлого выигрыша ставка удвоилась: теперь выиграешь {winAmount} монеток, а проиграешь {loseAmount}.',
+        'Раз уж ты поймал удачу, я поднял цену: за правильную карту получишь {winAmount}, за ошибку потеряешь {loseAmount}.',
+      ],
+    },
     {
       templates: [
         'Выбирай карту. Любую. Я обещаю, что не буду мухлевать. Почти.',
