@@ -86,6 +86,10 @@ function getNextRoundStakes(context: MachineContext): Stakes {
   return BASE_STAKES_VALUE;
 }
 
+function logWinningCard(winningCard: CardIndex) {
+  console.log('Winning card:', winningCard + 1);
+}
+
 function resolveValue(
   context: MachineContext,
   value: ValueSource,
@@ -284,7 +288,11 @@ function applyEffect(
   switch (effect.type) {
     case 'set-context': {
       const nextContext = structuredClone(context) as MachineContext;
-      setPathValue(nextContext as unknown as Record<string, unknown>, effect.key, resolveValue(context, effect.value, random, event));
+      const resolvedValue = resolveValue(context, effect.value, random, event);
+      setPathValue(nextContext as unknown as Record<string, unknown>, effect.key, resolvedValue);
+      if (effect.key === 'winningCard' && typeof resolvedValue === 'number') {
+        logWinningCard(resolvedValue as CardIndex);
+      }
       return nextContext;
     }
     case 'set-scene-data':
@@ -389,7 +397,7 @@ function applyEffect(
       };
     case 'prepare-next-round':
       const nextWinningCard = randomCardIndex([], random);
-      console.log('Winning card:', nextWinningCard + 1);
+      logWinningCard(nextWinningCard);
       return {
         ...context,
         winningCard: nextWinningCard,
@@ -574,11 +582,11 @@ export function createInitialMachineState(
   graph: GameGraph = gameGraph,
 ): MachineState {
   const random = options.random ?? Math.random;
-  const winningCard = randomCardIndex([], random);
-  console.log('Winning card:', winningCard + 1);
+  const initialWinningCard = randomCardIndex([], random);
+  logWinningCard(initialWinningCard);
   const initialContext: MachineContext = {
     coins: 10,
-    winningCard,
+    winningCard: initialWinningCard,
     selectedCard: null,
     revealedCards: [false, false, false],
     currentStakes: BASE_STAKES_VALUE,
